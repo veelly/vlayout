@@ -34,6 +34,8 @@ import com.alibaba.android.vlayout.layout.ColumnLayoutHelper;
 import com.alibaba.android.vlayout.layout.FixLayoutHelper;
 import com.alibaba.android.vlayout.layout.FloatLayoutHelper;
 import com.alibaba.android.vlayout.layout.GridLayoutHelper;
+import com.alibaba.android.vlayout.layout.GroupGridLayoutHelper;
+import com.alibaba.android.vlayout.layout.GroupLayoutHelper;
 import com.alibaba.android.vlayout.layout.LinearLayoutHelper;
 import com.alibaba.android.vlayout.layout.OnePlusNLayoutHelper;
 import com.alibaba.android.vlayout.layout.ScrollFixLayoutHelper;
@@ -173,6 +175,23 @@ public class VLayoutActivity extends Activity {
 
         final List<DelegateAdapter.Adapter> adapters = new LinkedList<>();
 
+        {
+            GroupGridLayoutHelper helper = new GroupGridLayoutHelper();
+            helper.setMargin(10, 10, 10, 10);
+            helper.setBgColor(Color.GREEN);
+            //helper.setLayoutHelperFinder(layoutManager);
+            GridLayoutHelper helper1 = new GridLayoutHelper(1, 10);
+            helper1.setMargin(10, 10, 10, 10);
+            helper1.setVGap(5);
+            helper1.setBgColor(Color.rgb(128, 20, 10));
+            helper.addLayoutHelper(0, helper1);
+
+            GridLayoutHelper helper2 = new GridLayoutHelper(2, 10);
+            helper2.setMargin(10, 10, 10, 10);
+            helper2.setBgColor(Color.YELLOW);
+            helper.addLayoutHelper(10, helper2);
+            adapters.add(new SubAdapter(this, helper, 20));
+        }
 
         if (BANNER_LAYOUT) {
             adapters.add(new SubAdapter(this, new LinearLayoutHelper(), 1) {
