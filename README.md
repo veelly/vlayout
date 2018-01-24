@@ -2,16 +2,31 @@
 
 [中文文档](README-ch.md)
 
-Project `vlayout` is a powerfull LayoutManager extension for RecyclerView, it provides a group of layouts for RecyclerView. Make it able to handle a complicate situation when grid, list and other layouts in the same recyclerview.
+## Projects of Tangram
+
+### Android
+
++ [Tangram-Android](https://github.com/alibaba/Tangram-Android)
++ [Virtualview-Android](https://github.com/alibaba/Virtualview-Android)
++ [vlayout](https://github.com/alibaba/vlayout)
++ [UltraViewPager](https://github.com/alibaba/UltraViewPager)
+
+### iOS
+
++ [Tangram-iOS](https://github.com/alibaba/Tangram-iOS)
++ [Virtualview-iOS](https://github.com/alibaba/VirtualView-iOS)
++ [LazyScrollView](https://github.com/alibaba/lazyscrollview)
+
+Project `vlayout` is a powerful LayoutManager extension for RecyclerView, it provides a group of layouts for RecyclerView. Make it able to handle a complicate situation when grid, list and other layouts in the same recyclerview.
 
 ## Design
 
 By providing a custom LayoutManager to RecyclerView, VirtualLayout is able to layout child views with different style at single view elegantly. The custom LayoutManager manages a serial of layoutHelpers where each one implements the specific layout logic for a certain position range items. By the way, implementing your custom layoutHelper and provding it to the framework is also supported.
 
 ## Main Feature
-* Provide default common layout implements, decouple the View and Layout. Default layout implements are:
+* Provide default common layout implementation, decouple the View and Layout. Default layout implementations are:
 	* LinearLayoutHelper: provide linear layout as LinearLayoutManager.
-	* GridLayoutHelper: privide grid layout as GridLayoutManager, but with more feature.
+	* GridLayoutHelper: provide grid layout as GridLayoutManager, but with more feature.
 	* FixLayoutHelper: fix the view at certain position of screen, the view does not scroll with whole page.
 	* ScrollFixLayoutHelper: fix the view at certain position of screen, but the view does not show until it scrolls to it position.
 	* FloatLayoutHelper: float the view on top of page, user can drag and drop it.
@@ -27,32 +42,28 @@ By providing a custom LayoutManager to RecyclerView, VirtualLayout is able to la
 
 ### Import Library
 
-Please find the latest version(1.0.4 so far) in maven repository. The newest version has been upload to jcenter and MavenCantral, make sure you have added at least one of these repositories.
+Please find the latest version in [release notes](https://github.com/alibaba/vlayout/releases). The newest version has been upload to jcenter and MavenCentral, make sure you have added at least one of these repositories. As follow:
 
 For gradle:
-
-```
-// gradle
-compile ('com.alibaba.android:vlayout:1.0.4@aar') {
+``` gradle
+compile ('com.alibaba.android:vlayout:1.2.8@aar') {
 	transitive = true
 }
 ```
 
-Or in maven:
-
-```
-// pom.xml 
+Or in maven:  
+pom.xml
+``` xml
 <dependency>
   <groupId>com.alibaba.android</groupId>
   <artifactId>vlayout</artifactId>
-  <version>1.0.4</version>
+  <version>1.2.8</version>
   <type>aar</type>
 </dependency>
 ```
 
 ### Initialize LayoutManager
-
-```
+``` java
 final RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
 final VirtualLayoutManager layoutManager = new VirtualLayoutManager(this);
 
@@ -60,20 +71,22 @@ recyclerView.setLayoutManager(layoutManager);
 ```
 
 ### Initialize recycled pool's size
-Provide a reasonable recycled pool's size to your recyclerView, since the default value may not meet your situation and cause re-create views when scolling.
+Provide a reasonable recycled pool's size to your recyclerView, since the default value may not meet your situation and cause re-create views when scrolling.
 
-```
+``` java
 RecyclerView.RecycledViewPool viewPool = new RecyclerView.RecycledViewPool();
 recyclerView.setRecycledViewPool(viewPool);
 viewPool.setMaxRecycledViews(0, 10);
 ```
 
+**Attention: the demo code above only modify the recycle pool size of item with type = 0, it you has more than one type in your adapter, you should update recycle pool size for each type.**
+
 ### Set Adapters
 
 * You can use `DelegateAdapter` for as a root adapter to make combination of your own adapters. Just make it extend ```DelegateAdapter.Adapter``` and overrides ```onCreateLayoutHelper``` method.
 
-```
-DelegateAdapter delegateAdapter = new DelegateAdapter(layoutManager, hasStableItemType);
+``` java
+DelegateAdapter delegateAdapter = new DelegateAdapter(layoutManager, hasConsistItemType);
 recycler.setAdapter(delegateAdapter);
 
 // Then you can set sub- adapters
@@ -89,9 +102,11 @@ adapter.notifyDataSetChanged();
 
 ```
 
+**Attention: When `hasConsistItemType = true`, items with same type value in different sub-adapters share the same type, their view would be reused during scroll. When `hasConsistItemType = false`, items with same type value in different sub-adapters do not share the same type internally.**
+
 * The other way to set adapter is extending ```VirtualLayoutAdapter``` and implementing it to make deep combination to your business code.
 
-```
+``` java
 public class MyAdapter extends VirtualLayoutAdapter {
    ......
 }
@@ -118,11 +133,29 @@ recycler.setAdapter(myAdapter);
 
 In this way, one thing you should note is that you should call ```setLayoutHelpers``` when the data of Adapter changes.
 
+### Config proguard
+
+Add following configs in your proguard file if your app is released with proguard.
+
+```
+-keepattributes InnerClasses
+-keep class com.alibaba.android.vlayout.ExposeLinearLayoutManagerEx { *; }
+-keep class android.support.v7.widget.RecyclerView$LayoutParams { *; }
+-keep class android.support.v7.widget.RecyclerView$ViewHolder { *; }
+-keep class android.support.v7.widget.ChildHelper { *; }
+-keep class android.support.v7.widget.ChildHelper$Bucket { *; }
+-keep class android.support.v7.widget.RecyclerView$LayoutManager { *; }
+```
+
 # Demo
 
 ![](http://img3.tbcdn.cn/L1/461/1/1b9bfb42009047f75cee08ae741505de2c74ac0a)
 
 [Demo Project](https://github.com/alibaba/vlayout/tree/master/examples)
+
+# FAQ
+
+Read FAQ(In Chinese language only now) before submitting issue: [FAQ](docs/VLayoutFAQ.md)。
 
 # Layout Attributes
 

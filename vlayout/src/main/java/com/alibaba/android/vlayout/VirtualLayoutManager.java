@@ -24,6 +24,19 @@
 
 package com.alibaba.android.vlayout;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import com.alibaba.android.vlayout.layout.BaseLayoutHelper;
+import com.alibaba.android.vlayout.layout.DefaultLayoutHelper;
+import com.alibaba.android.vlayout.layout.FixAreaAdjuster;
+import com.alibaba.android.vlayout.layout.FixAreaLayoutHelper;
+
 import android.content.Context;
 import android.graphics.Rect;
 import android.os.Build;
@@ -39,24 +52,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 
-import com.alibaba.android.vlayout.layout.BaseLayoutHelper;
-import com.alibaba.android.vlayout.layout.DefaultLayoutHelper;
-import com.alibaba.android.vlayout.layout.FixAreaAdjuster;
-import com.alibaba.android.vlayout.layout.FixAreaLayoutHelper;
-
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
 
 /**
  * A {@link android.support.v7.widget.RecyclerView.LayoutManager} implementation which provides
  * a virtual layout for actual views.
- *
+ * <p>
  * NOTE: it will change {@link android.support.v7.widget.RecyclerView.RecycledViewPool}
  * for RecyclerView.
  *
@@ -81,14 +81,16 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
     public static final int VERTICAL = OrientationHelper.VERTICAL;
 
 
-    protected OrientationHelper mOrientationHelper;
-    protected OrientationHelper mSecondaryOrientationHelper;
+    protected OrientationHelperEx mOrientationHelper;
+    protected OrientationHelperEx mSecondaryOrientationHelper;
 
     private RecyclerView mRecyclerView;
 
     private boolean mNoScrolling = false;
 
     private boolean mNestedScrolling = false;
+
+    private boolean mEnableMarginOverlapping = false;
 
     private int mMaxMeasureSize = -1;
 
@@ -114,8 +116,8 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
      */
     public VirtualLayoutManager(@NonNull final Context context, int orientation, boolean reverseLayout) {
         super(context, orientation, reverseLayout);
-        this.mOrientationHelper = OrientationHelper.createOrientationHelper(this, orientation);
-        this.mSecondaryOrientationHelper = OrientationHelper.createOrientationHelper(this, orientation == VERTICAL ? HORIZONTAL : VERTICAL);
+        this.mOrientationHelper = OrientationHelperEx.createOrientationHelper(this, orientation);
+        this.mSecondaryOrientationHelper = OrientationHelperEx.createOrientationHelper(this, orientation == VERTICAL ? HORIZONTAL : VERTICAL);
         setHelperFinder(new RangeLayoutHelperFinder());
     }
 
@@ -246,6 +248,18 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
         return this.mHelperFinder.getLayoutHelpers();
     }
 
+    public void setEnableMarginOverlapping(boolean enableMarginOverlapping) {
+        mEnableMarginOverlapping = enableMarginOverlapping;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isEnableMarginOverLap() {
+        return mEnableMarginOverlapping;
+    }
+
     /**
      * Either be {@link #HORIZONTAL} or {@link #VERTICAL}
      *
@@ -258,7 +272,7 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
 
     @Override
     public void setOrientation(int orientation) {
-        this.mOrientationHelper = OrientationHelper.createOrientationHelper(this, orientation);
+        this.mOrientationHelper = OrientationHelperEx.createOrientationHelper(this, orientation);
         super.setOrientation(orientation);
     }
 
@@ -323,9 +337,39 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
         }
     }
 
+    public LayoutHelper findNeighbourNonfixLayoutHelper(LayoutHelper layoutHelper, boolean isLayoutEnd) {
+        if (layoutHelper == null) {
+            return null;
+        }
+        List<LayoutHelper> layoutHelpers = mHelperFinder.getLayoutHelpers();
+        int index = layoutHelpers.indexOf(layoutHelper);
+        if (index == -1) {
+            return null;
+        }
+        int next = isLayoutEnd ? index - 1 : index + 1;
+        if (next >= 0 && next < layoutHelpers.size()) {
+            LayoutHelper helper = layoutHelpers.get(next);
+            if (helper != null) {
+                if (helper.isFixLayout()) {
+                    return null;
+                } else {
+                    return helper;
+                }
+            } else {
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
+
     @Override
     protected int computeAlignOffset(View child, boolean isLayoutEnd, boolean useAnchor) {
-        int position = getPosition(child);
+        return computeAlignOffset(getPosition(child), isLayoutEnd, useAnchor);
+    }
+
+    @Override
+    protected int computeAlignOffset(int position, boolean isLayoutEnd, boolean useAnchor) {
         if (position != RecyclerView.NO_POSITION) {
             LayoutHelper helper = mHelperFinder.getLayoutHelper(position);
 
@@ -338,10 +382,13 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
         return 0;
     }
 
-
     public int obtainExtraMargin(View child, boolean isLayoutEnd) {
+        return obtainExtraMargin(child, isLayoutEnd, true);
+    }
+
+    public int obtainExtraMargin(View child, boolean isLayoutEnd, boolean useAnchor) {
         if (child != null) {
-            return computeAlignOffset(child, isLayoutEnd, true);
+            return computeAlignOffset(child, isLayoutEnd, useAnchor);
         }
 
         return 0;
@@ -379,6 +426,24 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
         }
     }
 
+    public void runAdjustLayout() {
+        final int startPosition = findFirstVisibleItemPosition();
+        final LayoutHelper firstLayoutHelper = mHelperFinder.getLayoutHelper(startPosition);
+        final int endPosition = findLastVisibleItemPosition();
+        final LayoutHelper lastLayoutHelper = mHelperFinder.getLayoutHelper(endPosition);
+        List<LayoutHelper> totalLayoutHelpers = mHelperFinder.getLayoutHelpers();
+        final int start = totalLayoutHelpers.indexOf(firstLayoutHelper);
+        final int end = totalLayoutHelpers.indexOf(lastLayoutHelper);
+        for (int i = start; i <= end; i++) {
+            try {
+                totalLayoutHelpers.get(i).adjustLayout(startPosition, endPosition, this);
+            } catch (Exception e) {
+                if (VirtualLayoutManager.sDebuggable) {
+                    throw e;
+                }
+            }
+        }
+    }
 
     @Override
     public void onLayoutChildren(RecyclerView.Recycler recycler, RecyclerView.State state) {
@@ -1052,6 +1117,7 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
     }
 
 
+    @Override
     public void moveView(int fromIndex, int toIndex) {
         super.moveView(fromIndex, toIndex);
     }
@@ -1084,6 +1150,12 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
 
     }
 
+    @Override
+    public void addBackgroundView(View view, boolean head) {
+        showView(view);
+        int index = head ? 0 : -1;
+        addView(view, index);
+    }
 
     @Override
     public void addFixedView(View view) {
@@ -1131,18 +1203,23 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
     }
 
     @Override
-    public OrientationHelper getMainOrientationHelper() {
+    public OrientationHelperEx getMainOrientationHelper() {
         return mOrientationHelper;
     }
 
     @Override
-    public OrientationHelper getSecondaryOrientationHelper() {
+    public OrientationHelperEx getSecondaryOrientationHelper() {
         return mSecondaryOrientationHelper;
     }
 
     @Override
     public void measureChild(View child, int widthSpec, int heightSpec) {
-        measureChildWithDecorationsAndMargin(child, widthSpec, heightSpec);
+        measureChildWithDecorations(child, widthSpec, heightSpec);
+    }
+
+    @Override
+    public void measureChildWithMargins(View child, int widthUsed, int heightUsed) {
+        measureChildWithDecorationsAndMargin(child, widthUsed, heightUsed);
     }
 
     @Override
@@ -1162,10 +1239,16 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
     }
 
     @Override
-    public void layoutChild(View child, int left, int top, int right, int bottom) {
+    public void layoutChildWithMargins(View child, int left, int top, int right, int bottom) {
         final ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) child.getLayoutParams();
         layoutDecorated(child, left + lp.leftMargin, top + lp.topMargin,
                 right - lp.rightMargin, bottom - lp.bottomMargin);
+    }
+
+    @Override
+    public void layoutChild(View child, int left, int top, int right, int bottom) {
+        layoutDecorated(child, left, top,
+                right, bottom);
     }
 
     @Override
@@ -1233,7 +1316,7 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
             RecyclerView.ViewHolder holder = getChildViewHolder(v);
             if (holder instanceof CacheViewHolder && ((CacheViewHolder) holder).needCached()) {
                 // mark not invalid, ignore DataSetChange(), make the ViewHolder itself to maitain the data
-                ViewHolderWrapper.setFlags(holder, 0, FLAG_INVALID |FLAG_UPDATED);
+                ViewHolderWrapper.setFlags(holder, 0, FLAG_INVALID | FLAG_UPDATED);
             }
         }
 
@@ -1279,13 +1362,25 @@ public class VirtualLayoutManager extends ExposeLinearLayoutManagerEx implements
 
     private Rect mDecorInsets = new Rect();
 
+    private void measureChildWithDecorations(View child, int widthSpec, int heightSpec) {
+        calculateItemDecorationsForChild(child, mDecorInsets);
+        widthSpec = updateSpecWithExtra(widthSpec, mDecorInsets.left, mDecorInsets.right);
+        heightSpec = updateSpecWithExtra(heightSpec, mDecorInsets.top, mDecorInsets.bottom);
+        child.measure(widthSpec, heightSpec);
+    }
+
     private void measureChildWithDecorationsAndMargin(View child, int widthSpec, int heightSpec) {
         calculateItemDecorationsForChild(child, mDecorInsets);
         RecyclerView.LayoutParams lp = (RecyclerView.LayoutParams) child.getLayoutParams();
-        widthSpec = updateSpecWithExtra(widthSpec, lp.leftMargin + mDecorInsets.left,
+
+        if (getOrientation() == VERTICAL) {
+            widthSpec = updateSpecWithExtra(widthSpec, lp.leftMargin + mDecorInsets.left,
                 lp.rightMargin + mDecorInsets.right);
-        heightSpec = updateSpecWithExtra(heightSpec, lp.topMargin + mDecorInsets.top,
-                lp.bottomMargin + mDecorInsets.bottom);
+        }
+        if (getOrientation() == HORIZONTAL) {
+            heightSpec = updateSpecWithExtra(heightSpec, mDecorInsets.top,
+                    mDecorInsets.bottom);
+        }
         child.measure(widthSpec, heightSpec);
     }
 

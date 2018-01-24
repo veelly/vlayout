@@ -24,6 +24,7 @@
 
 package com.alibaba.android.vlayout;
 
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -79,7 +80,7 @@ public abstract class LayoutHelper {
      * @param end   end position of items handled by this layoutHelper, if end < start, it will throw {@link IllegalArgumentException}
      * @throws MismatchChildCountException when the (start - end) doesn't equal to itemCount
      */
-    void setRange(int start, int end) {
+    public void setRange(int start, int end) {
         if (end < start) {
             throw new IllegalArgumentException("end should be larger or equeal then start position");
         }
@@ -119,7 +120,7 @@ public abstract class LayoutHelper {
      * @return Range of integer
      */
     @NonNull
-    protected final Range<Integer> getRange() {
+    public final Range<Integer> getRange() {
         return mRange;
     }
 
@@ -177,14 +178,13 @@ public abstract class LayoutHelper {
     }
 
     /**
-     * Set zIndex of this {@link LayoutHelper}
-     *
+     * Experimental attribute, set zIndex of this {@link LayoutHelper}，it does not mean the z-index of view. It just reorder the layoutHelpers in linear flow.
+     * Do not use it currently.
      * @param zIndex
      */
     public void setZIndex(int zIndex) {
         this.mZIndex = zIndex;
     }
-
 
     /**
      * Get View that fixed in some position
@@ -270,6 +270,14 @@ public abstract class LayoutHelper {
                                      int startPosition, int endPosition, int scrolled,
                                      LayoutManagerHelper helper);
 
+    /**
+     * Run to adjust layoutHelper's background area
+     * @param startPosition
+     * @param endPosition
+     * @param helper
+     */
+    public abstract void adjustLayout(int startPosition, int endPosition, LayoutManagerHelper helper);
+
     public void onItemsChanged(LayoutManagerHelper helper) {
 
     }
@@ -295,6 +303,7 @@ public abstract class LayoutHelper {
      */
     public abstract void bindLayoutView(View layoutView);
 
+    public abstract boolean isFixLayout();
 
     /**
      * Get margins between layout when layout child at <code>offset</code>
@@ -306,8 +315,20 @@ public abstract class LayoutHelper {
      * @param helper      view layout helper
      * @return extra offset must be calculated in {@link VirtualLayoutManager}
      */
-    public abstract int computeAlignOffset(int offset, boolean isLayoutEnd, boolean useAnchor, LayoutManagerHelper helper);
+    public abstract int computeAlignOffset(int offset, boolean isLayoutEnd, boolean useAnchor,
+        LayoutManagerHelper helper);
 
+    public abstract int computeMarginStart(int offset, boolean isLayoutEnd, boolean useAnchor,
+        LayoutManagerHelper helper);
+
+    public abstract int computeMarginEnd(int offset, boolean isLayoutEnd, boolean useAnchor,
+        LayoutManagerHelper helper);
+
+    public abstract int computePaddingStart(int offset, boolean isLayoutEnd, boolean useAnchor,
+        LayoutManagerHelper helper);
+
+    public abstract int computePaddingEnd(int offset, boolean isLayoutEnd, boolean useAnchor,
+        LayoutManagerHelper helper);
 
     public void onSaveState(final Bundle bundle) {
 

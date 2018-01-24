@@ -27,6 +27,8 @@ package com.alibaba.android.vlayout.layout;
 import com.alibaba.android.vlayout.LayoutHelper;
 import com.alibaba.android.vlayout.LayoutManagerHelper;
 
+import static com.alibaba.android.vlayout.VirtualLayoutManager.VERTICAL;
+
 /**
  * {@link LayoutHelper} provides margin and padding supports.
  */
@@ -81,8 +83,49 @@ public abstract class MarginLayoutHelper extends LayoutHelper {
      * @param helper      view layout helper
      * @return pixel offset to start to the anchor view
      */
+    @Override
     public int computeAlignOffset(int offset, boolean isLayoutEnd, boolean useAnchor, LayoutManagerHelper helper) {
         return 0;
+    }
+
+    @Override
+    public int computeMarginStart(int offset, boolean isLayoutEnd, boolean useAnchor, LayoutManagerHelper helper) {
+        final boolean layoutInVertical = helper.getOrientation() == VERTICAL;
+        if (layoutInVertical) {
+            return mMarginTop;
+        } else {
+            return mMarginLeft;
+        }
+    }
+
+    @Override
+    public int computeMarginEnd(int offset, boolean isLayoutEnd, boolean useAnchor, LayoutManagerHelper helper) {
+        final boolean layoutInVertical = helper.getOrientation() == VERTICAL;
+        if (layoutInVertical) {
+            return mMarginBottom;
+        } else {
+            return mMarginRight;
+        }
+    }
+
+    @Override
+    public int computePaddingStart(int offset, boolean isLayoutEnd, boolean useAnchor, LayoutManagerHelper helper) {
+        final boolean layoutInVertical = helper.getOrientation() == VERTICAL;
+        if (layoutInVertical) {
+            return mPaddingTop;
+        } else {
+            return mPaddingLeft;
+        }
+    }
+
+    @Override
+    public int computePaddingEnd(int offset, boolean isLayoutEnd, boolean useAnchor, LayoutManagerHelper helper) {
+        final boolean layoutInVertical = helper.getOrientation() == VERTICAL;
+        if (layoutInVertical) {
+            return mPaddingBottom;
+        } else {
+            return mPaddingRight;
+        }
     }
 
     /**
@@ -90,7 +133,7 @@ public abstract class MarginLayoutHelper extends LayoutHelper {
      *
      * @return
      */
-    protected int getHorizontalMargin() {
+    public int getHorizontalMargin() {
         return mMarginLeft + mMarginRight;
     }
 
@@ -99,7 +142,7 @@ public abstract class MarginLayoutHelper extends LayoutHelper {
      *
      * @return
      */
-    protected int getVerticalMargin() {
+    public int getVerticalMargin() {
         return mMarginTop + mMarginBottom;
     }
 
@@ -107,7 +150,7 @@ public abstract class MarginLayoutHelper extends LayoutHelper {
      * Get total padding in horizontal dimension
      * @return
      */
-    protected int getHorizontalPadding() {
+    public int getHorizontalPadding() {
         return mPaddingLeft + mPaddingRight;
     }
 
@@ -115,7 +158,7 @@ public abstract class MarginLayoutHelper extends LayoutHelper {
      * Get total padding in vertical dimension
      * @return
      */
-    protected int getVerticalPadding() {
+    public int getVerticalPadding() {
         return mPaddingTop + mPaddingBottom;
     }
 
